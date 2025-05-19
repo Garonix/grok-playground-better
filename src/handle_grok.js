@@ -1,5 +1,26 @@
 const DOMAIN_URL = "https://grok.com";
 const ASSETS_URL = "https://assets.grok.com";
+const COOKIE_FILE = '../data/grok_cookies.json'; // 注意路径相对src目录
+
+// 读取保存的cookie
+async function loadCookies() {
+    try {
+        const data = await Deno.readTextFile(COOKIE_FILE);
+        return JSON.parse(data) || {};
+    } catch (error) {
+        // 文件不存在时返回空对象
+        return {};
+    }
+}
+
+// 保存cookie到文件
+async function saveCookies(cookies) {
+    try {
+        await Deno.writeTextFile(COOKIE_FILE, JSON.stringify(cookies, null, 2));
+    } catch (error) {
+        console.error('Error saving cookies:', error);
+    }
+}
 
 export async function handleGrokRequest (req) {
 
@@ -27,23 +48,25 @@ export async function handleGrokRequest (req) {
     const headers = new Headers(req.headers);
     headers.set("Host", targetFullUrl.host);
 
-
-    // 从请求的cookie中读取grok_cookie
-    let grokCookie = '';
+    // === 持久化cookie逻辑 ===
+    // 以host为key区分不同来源（如有需要可自定义）
+    const savedCookies = await loadCookies();
+    const host = req.headers.get('host') || 'default';
+    let grokCookie = savedCookies[host] || '';
     const cookieHeader = req.headers.get('cookie');
-    if (cookieHeader) {
-        const cookies = cookieHeader.split(';');
-        for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'grok_cookie') {
-            grokCookie = decodeURIComponent(value);
-            break;
-        }
-        }
+
+    // 如果请求带了cookie且和已保存不同，则更新保存
+    if (cookieHeader && cookieHeader !== grokCookie) {
+        savedCookies[host] = cookieHeader;
+        grokCookie = cookieHeader;
+        saveCookies(savedCookies).catch(console.error);
     }
 
-    //实际用这个cookie请求grok
-    headers.set("cookie", grokCookie || '');
+    // 使用已保存的cookie
+    if (grokCookie) {
+        headers.set("cookie", grokCookie);
+    }
+
     headers.delete("Referer");
     //删除可能暴露IP的请求头
     headers.delete('CF-Connecting-IP');
@@ -58,7 +81,6 @@ export async function handleGrokRequest (req) {
     headers.delete('x-vercel-id');
     headers.delete('origin');
     headers.delete('baggage');
-
 
     //console.log('Request Headers:', headers);
 
