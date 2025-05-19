@@ -1,0 +1,9 @@
+services:
+  grok-playground:
+    build: .
+    container_name: grok-playground
+    ports:
+      - "5880:80"
+    volumes:
+      - ./data:/app/data # 持久化cookie等数据
+    restart: unless-stopped

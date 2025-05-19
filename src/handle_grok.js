@@ -1,6 +1,6 @@
 const DOMAIN_URL = "https://grok.com";
 const ASSETS_URL = "https://assets.grok.com";
-const COOKIE_FILE = '../data/grok_cookies.json'; // 注意路径相对src目录
+const COOKIE_FILE = '/app/data/grok_cookies.json'; // 使用绝对路径
 
 // 读取保存的cookie
 async function loadCookies() {

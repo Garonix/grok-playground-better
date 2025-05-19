@@ -177,3 +177,6 @@ deno.lock
 
 # Local Netlify folder
 .netlify
+
+data
+deno_app.log*

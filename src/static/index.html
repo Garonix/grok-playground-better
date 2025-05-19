@@ -234,30 +234,39 @@
             grokLink.href = window.location.origin + '/grok';
         }
         
-        // 从localStorage加载账户
-        function loadAccounts() {
-            const savedAccounts = localStorage.getItem('cookieAccounts');
-            if (savedAccounts) {
-                accounts = JSON.parse(savedAccounts);
+        // 从后端加载账户
+        async function loadAccounts() {
+            try {
+                const resp = await fetch('/api/accounts');
+                if (resp.ok) {
+                    accounts = await resp.json();
+                } else {
+                    accounts = [];
+                }
+            } catch {
+                accounts = [];
             }
-            
             // 加载选中的账户
             selectedAccountId = localStorage.getItem('selectedAccountId');
-            
             renderAccounts();
             updateSelectedAccountDiv();
         }
         
-        // 保存账户到localStorage
-        function saveAccounts() {
-            localStorage.setItem('cookieAccounts', JSON.stringify(accounts));
+        // 保存账户到后端
+        async function saveAccounts() {
+            try {
+                await fetch('/api/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(accounts)
+                });
+            } catch {}
         }
         
         // 渲染账户列表
         function renderAccounts() {
             const container = document.getElementById('accounts-container');
             container.innerHTML = '';
-            
             accounts.forEach((account, index) => {
                 const accountDiv = document.createElement('div');
                 accountDiv.className = 'account';
@@ -277,9 +286,7 @@
                 
                 const label = document.createElement('label');
                 label.htmlFor = `account-${account.id}`;
-                label.textContent = `账户 ${index + 1}`;
                 label.innerHTML = `账户 ${index + 1} <a href="#" class="help-link" onclick="openHelpPanel(event)">如何获取cookie?</a>`;
-
                 
                 radioContainer.appendChild(radio);
                 radioContainer.appendChild(label);
@@ -288,9 +295,9 @@
                 textarea.placeholder = '在此粘贴Cookie字符串...';
                 textarea.value = account.cookie || '';
                 textarea.id = `cookie-${account.id}`;
-                textarea.addEventListener('input', () => {
+                textarea.addEventListener('input', async () => {
                     account.cookie = textarea.value;
-                    saveAccounts();
+                    await saveAccounts();
                     
                     if (account.id === selectedAccountId) {
                         // 将选中账户保存到grok_cookie中
@@ -313,17 +320,18 @@
         }
         
         // 添加新账户
-        function addAccount() {
+        async function addAccount() {
             const newId = Date.now().toString();
             accounts.push({
                 id: newId,
                 cookie: ''
             });
+            await saveAccounts();
             renderAccounts();
         }
         
         // 删除账户
-        function deleteAccount(id) {
+        async function deleteAccount(id) {
             if (confirm('确定要删除此账户吗？')) {
                 accounts = accounts.filter(account => account.id !== id);
                 
@@ -333,7 +341,7 @@
                     updateSelectedAccountDiv();
                 }
                 
-                saveAccounts();
+                await saveAccounts();
                 renderAccounts();
             }
         }
